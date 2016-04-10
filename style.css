@@ -1,0 +1,9 @@
+canvas {
+    border-right: 1px solid;
+    float: left;
+}
+
+#info {
+    float: left;
+    margin-left: 10px;
+}
