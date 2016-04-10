@@ -14,7 +14,7 @@ var settings = {
     faceColorSelected: 'orange'
 };
 
-var mouse = {x:0, y:0};
+var mouse = new Point();
 
 // Testing utils
 function displayInfo(info) {
@@ -44,6 +44,10 @@ function Point(x, y) {
         return false;
     };
 
+    this.distanceTo = function(point) {
+        return Math.sqrt(Math.pow((this.x - point.x), 2) + Math.pow((this.y - point.y), 2));
+    };
+
     // Sets the point
     this.setPoint = function(x, y) {
         this.x = x;
@@ -51,6 +55,8 @@ function Point(x, y) {
     }
 }
 
+
+// Make this inherit Point for much easier coordinate access. :)
 function Vertex() {
     this.coords = new Point(); // Center of the vert
     this.selected = false;
@@ -60,7 +66,8 @@ function Vertex() {
         var offsetX = this.coords.x - (settings.vertSize / 2);
         var offsetY = this.coords.y - (settings.vertSize / 2);
 
-        if(settings.threshold >= Math.abs(mouse.x - this.coords.x) && settings.threshold >= Math.abs(mouse.y - this.coords.y)) {
+        // If less than the threshold, and closest to the mouse...
+        if(this.coords.distanceTo(mouse) <= settings.threshold) {
             this.selected = true;
         }
         else {
@@ -101,8 +108,8 @@ function Edge() {
 
     // Returns the midpoint of the line
     this.getPos = function() {
-        var x = (verts[1].coords.x - verts[0].coords.x) / 2 + verts[0].coords.x;
-        var y = (verts[1].coords.y - verts[0].coords.y) / 2 + verts[0].coords.y;
+        var x = (verts[1].coords.x + verts[0].coords.x) / 2;
+        var y = (verts[1].coords.y + verts[0].coords.y) / 2;
 
         return new Point(x, y);
     };
@@ -218,6 +225,11 @@ f.setEdges(e, e1, e2);
 f1 = new Face();
 f1.setEdges(e3, e4, e1);
 
+mid = new Vertex();
+mid.coords.x = e4.getPos().x;
+mid.coords.y = e4.getPos().y;
+
+
 function draw(e) {
     if(e) {
         var rect = canvas.getBoundingClientRect();
@@ -235,10 +247,13 @@ function draw(e) {
     v1.draw();
     v2.draw();
     v3.draw();
+    mid.draw();
 }
 
 canvas.addEventListener('mousemove', draw);
 draw();
+
+console.log(v2.coords.distanceTo(v1.coords));
 
 
 
