@@ -1,35 +1,17 @@
 var canvas = document.getElementById('app');
 var context = canvas.getContext('2d');
 
-// Settings
-var settings = {
-    threshold: 16,
-    vertSize: 4,
-    vertColor: 'black',
-    vertColorSelected: 'orange',
-    edgeWidth: 0.5,
-    edgeColor: 'black',
-    edgeColorSelected: 'orange',
-    faceColor: '#ABCDEF',
-    faceColorSelected: 'orange'
-};
+window.onresize = setCanvasSize;
 
-// Temporary array until multiple file structure is enabled
-var hasFocus = undefined;
-
-/*Type{Point}*/
-function Mouse() {
-    this.down = false;
-    this.drag = false;
+function setCanvasSize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 }
 
-Mouse.prototype = Object.create(Point.prototype);
+var dragging = false;
 
-// Testing utils
-function displayInfo(info) {
-    var infoBox = document.getElementById('info');
-    infoBox.textContent = info;
-}
+var input = new Input();
+input.init();
 
 // Canvas utils
 function drawSquare(x, y, w, c) {
@@ -66,29 +48,55 @@ Point.prototype.setPoint = function(x, y) {
 /*@Type{Point}*/
 function Vertex() {
     this.selected = false;
-}
+    this.moving = false;
 
-// Inheritance
+    this.mouseOffsetX = undefined;
+    this.mouseOffsetY = undefined;
+}
 Vertex.prototype = Object.create(Point.prototype);
 
 Vertex.prototype.draw = function() {
     var offsetX = this.x - (settings.vertSize / 2);
     var offsetY = this.y - (settings.vertSize / 2);
 
-    // If less than the threshold, and closest to the mouse...
-    if(this.distanceTo(Mouse) <= settings.threshold && Mouse.down) {
+    if(input.keys['a']) {
+        if(this.selected) {
+            this.selected = false;
+        }
+    }
+
+    if(this.selected) {
+        if(input.keys['g'] && !this.moving) {
+            this.moving = true;
+            this.mouseOffsetX = this.x - input.Mouse.x;
+            this.mouseOffsetY = this.y - input.Mouse.y;
+        } else if(!input.keys['g'] && this.moving) {
+            this.moving = false;
+        }
+
+        if(this.moving) {
+            this.move(this.mouseOffsetX, this.mouseOffsetY);
+        }
+        drawSquare(offsetX, offsetY, settings.vertSize, settings.vertColorSelected);
+    }
+    else {
+        if(this.distanceTo(input.Mouse) <= settings.selectionThreshold) {
+            drawSquare(offsetX, offsetY, settings.vertSize, settings.vertColorHover);
+        }
+        else {
+            drawSquare(offsetX, offsetY, settings.vertSize, settings.vertColor);
+        }
+    }
+    
+    if(this.distanceTo(input.Mouse) <= settings.selectionThreshold && input.Mouse.right) {
         this.selected = !this.selected;
     }
 
-    if (this.selected) {
-        if(Mouse.drag) {
-            this.x = Mouse.x;
-            this.y = Mouse.y;
-        }
-        drawSquare(offsetX, offsetY, settings.vertSize, settings.vertColorSelected);
-    } else {
-        drawSquare(offsetX, offsetY, settings.vertSize, settings.vertColor);
-    }
+};
+
+Vertex.prototype.move = function(x, y) {
+    this.x = x + input.Mouse.x;
+    this.y = y + input.Mouse.y;
 };
 
 
@@ -130,11 +138,6 @@ Edge.prototype.draw = function() {
         context.moveTo(this.verts[0].x, this.verts[0].y);
         context.lineTo(this.verts[1].x, this.verts[1].y);
         context.stroke();
-
-        // Draw midpoints
-        vert = new Vertex();
-        vert.setPoint(this.getPos().x, this.getPos().y);
-        vert.draw();
     }
 };
 
@@ -186,16 +189,16 @@ Face.prototype.draw = function() {
 
 // Create some geometry for testing purposes
 v = new Vertex();
-v.setPoint(30, 55);
+v.setPoint(100, 100);
 
 v1 = new Vertex();
-v1.setPoint(200, 300);
+v1.setPoint(100, 300);
 
 v2 = new Vertex();
 v2.setPoint(300, 100);
 
 v3 = new Vertex();
-v3.setPoint(300, 130);
+v3.setPoint(300, 300);
 
 e = new Edge();
 e.setVerts(v, v1);
@@ -219,32 +222,8 @@ f1 = new Face();
 f1.setEdges(e3, e4, e1);
 
 function draw(event) {
-    if(event) {
-        var rect = canvas.getBoundingClientRect();
-        Mouse.x = event.clientX - rect.left;
-        Mouse.y = event.clientY - rect.top;
-
-        if(event.type == 'mousedown') {
-            Mouse.down = true;
-            hasFocus = event.target;
-        }
-        else if(event.type == 'mouseup') {
-            Mouse.down = false;
-        }
-        else if(event.keyCode == 71 && event.type == 'keydown') {
-            if(hasFocus == canvas) {
-                Mouse.drag = true;
-            }
-        }
-        else if(event.type == "keyup" && event.keyCode == 71) {
-            if(hasFocus == canvas) {
-                Mouse.drag = false;
-            }
-        }
-
-    }
-
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = '#DDD';
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
     // Draw all the testing stuff
     f.draw();
@@ -259,11 +238,5 @@ function draw(event) {
     v2.draw();
     v3.draw();
 }
-
-canvas.addEventListener('mousemove', draw);
-document.addEventListener('mousedown', draw);
-canvas.addEventListener('mouseup', draw);
-document.addEventListener('keydown', draw);
-document.addEventListener('keyup', draw);
+setCanvasSize()
 draw();
-
